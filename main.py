@@ -105,7 +105,7 @@ class cpu(pyglet.window.Window):
                         0xa000: self._ANNN,
                         0xb000: self._BNNN,
                         0xc000: self._CXKK,
-                        0xd000: self._DXYN1, #Remember to check!!
+                        0xd000: self._DXYN2, #Remember to check!!
                         0xe09e: self._EX9E,
                         0xe0a1: self._EXA1,
                         0xf007: self._FX07,
@@ -209,8 +209,9 @@ class cpu(pyglet.window.Window):
             while i < 2048:
                 if self.display_buffer[i] == 1:
                     self.pixel.update((i%64)*10, 310 - ((i//64)*10))
+                    self.pixel.draw()
                 i += 1
-            self.flip()
+            #self.flip()
             self.should_draw = False
         
     def _0ZZZ(self):
@@ -336,7 +337,7 @@ class cpu(pyglet.window.Window):
         print("Set Vx = random byte AND kk")
         self.gpio[self.vx] = random.randint(0,255) & (self.op_code & 0x00ff)
 
-    def _DXYN1(self):
+    def _DXYN(self):
         print("Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision")
         self.gpio[0xf] = 0
         x = self.gpio[self.vx] & 0xff
@@ -359,7 +360,7 @@ class cpu(pyglet.window.Window):
                 row += 1
         self.should_draw = True
     
-    def _DYXN2(self):
+    def _DXYN2(self):
         x = self.gpio[self.vx] & 0xff # Try without masking
         y = self.gpio[self.vy] & 0xff
         height = self.op_code & 0x000f
@@ -378,16 +379,17 @@ class cpu(pyglet.window.Window):
                 self.display_buffer[loc] ^= curr_pixel
                 if self.display_buffer[loc] == 0:
                     self.gpio[0xf] = 1
-            self.should_draw(True)
+            self.should_draw = True
+    
 
     def _EX9E(self):
         print("Skip next instruction if key with the value of Vx is pressed")
-        if self.input_buffer(self.gpio[self.vx]) == 1:
+        if self.input_buffer[self.gpio[self.vx]] == 1:
             self.pc += 2
     
     def _EXA1(self):
         print("Skip next instruction if key with the value of Vx is not pressed.")
-        if self.input_buffer(self.gpio[self.vx]) == 0:
+        if self.input_buffer[self.gpio[self.vx]] == 0:
             self.key_inputs 
             self.pc += 2
     
