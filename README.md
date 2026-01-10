@@ -2,11 +2,13 @@ This is a basic Chip-8 emulator written in Python, intended as a beginner projec
 
 It uses pyglet for the graphics and sound. 
 
+Provided are some ROM files for testing
+
 Credits:
 
-Emulation Basics: Write your own Chip 8 Emulator/Interpreter by mmm
+Emulation Basics: Write your own Chip 8 Emulator/Interpreter by mmm:
 https://omokute.blogspot.com/
 
-Chip 8 Technical Reference by Cogwood
+Chip 8 Technical Reference by Cogwood:
 http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#0.0
 
