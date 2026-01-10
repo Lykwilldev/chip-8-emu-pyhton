@@ -2,22 +2,22 @@ from pyglet.window import key
 import pyglet
 import random
 import sys
-
-sys.argv= ["main.py", "IBMLogo.ch8"] 
-
+sys.argv = ["test.py","IBMLogo.ch8"]
 class cpu(pyglet.window.Window):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.pixel = pyglet.sprite.Sprite(pyglet.image.SolidColorImagePattern(color=(255, 255, 255, 255)).create_image(10, 10))
-
+    
     def main(self):
         self.initialize()
         self.load_rom(sys.argv[1])
         while not self.has_exit:
-            self.dispatch_events()
-            self.cycle()
-            self.draw
-            
+            pyglet.clock.schedule_interval(self.cycle, 1/60.0)
+            pyglet.app.run()
+           
+           
+
+   
 
     def initialize(self):
         self.clear()
@@ -60,26 +60,28 @@ class cpu(pyglet.window.Window):
 	    0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
 	    0xF0, 0x80, 0xF0, 0x80, 0x80] # F
 
-        # Input/Output
-        self.input_buffer = [0] * 16
-        self.display_buffer = [0] * 32 * 64 # 64*32 
+        self.KEY_MAP = {
+        key._1: 0x1,
+        key._2: 0x2,
+        key._3: 0x3,
+        key._4: 0xC,
 
-        # Memory
-        self.memory = [0] * 4096
+        key.Q: 0x4,
+        key.W: 0x5,
+        key.E: 0x6,
+        key.R: 0xD,
 
-        # Registers
-        self.gpio = [0] * 16
-        self.op_code = 0
-        self.sound_timer = 0
-        self.delay_timer = 0
-        self.index = 0
-        self.stack = []
+        key.A: 0x7,
+        key.S: 0x8,
+        key.D: 0x9,
+        key.F: 0xE,
 
-        self.should_draw = False
-        self.key_wait = False
-        self.pc = 0x200
-
-        # Opcode lookup table
+        key.Z: 0xA,
+        key.X: 0x0,
+        key.C: 0xB,
+        key.V: 0xF
+        }
+        
         self.funcmap = {0x0000: self._0ZZZ,   
                         0x00e0: self._0ZZ0,    
                         0x00ee: self._0ZZE,     
@@ -117,25 +119,46 @@ class cpu(pyglet.window.Window):
                         0xf065: self._FX65}
 
         
-        
+        # Input/Output
+        self.input_buffer = [0] * 16
+        self.display_buffer = [0] * 32 * 64 # 64*32 
+
+        # Memory
+        self.memory = [0] * 4096
+
+        # Registers
+        self.gpio = [0] * 16
+        self.op_code = 0
+        self.sound_timer = 0
+        self.delay_timer = 0
+        self.index = 0
+        self.stack = []
+
+        self.should_draw = False
+        self.key_wait = False
+        self.pc = 0x200
+
         i = 0 
         while i < 80: # 16 characters 5 bytes each
             self.memory[i] = self.fonts[i]
             i +=1
-        
+   
     def on_key_press(self, symbol, modifiers):
         print(f"Key pressed {symbol}")
         if symbol in self.KEY_MAP.keys():
-            self.input_buffer[KEY_MAP[symbol]] = 1
+            self.input_buffer[self.KEY_MAP[symbol]] = 1
+            print( self.input_buffer[self.KEY_MAP[symbol]])
             if self.key_wait:
                 self.key_wait = False
         else:
             super(cpu,self).on_key_press(symbol,modifiers)
+    
     def on_key_release(self, symbol, modifiers):
         print(f"Key released {symbol}")
-        if symbol in KEY_MAP.keys():
-            self.key_inputs[KEY_MAP[symbol]] = 0
-        return super().on_key_release(symbol, modifiers)
+        if symbol in self.KEY_MAP.keys():
+            self.input_buffer[self.KEY_MAP[symbol]] = 0
+            print(self.input_buffer[self.KEY_MAP[symbol]])
+        
     
     def load_rom(self,rom_path):
         print(f"Loading ROM from {rom_path}")
@@ -144,12 +167,13 @@ class cpu(pyglet.window.Window):
         while i < len(binary):
             self.memory[i+0x200] = binary[i] #ord(binary[i])
             i += 1
-
-        
-    def cycle(self):
-        if not self.key_wait:
+        print("ROM Loaded")
+    
+    def cycle(self,dt):
+       if not self.key_wait:
             print("opcode list: " , self.memory[self.pc])
-            self.op_code = self.memory[self.pc]
+            self.op_code = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
+            #self.op_code = self.memory[self.pc]
 
             
             # Processing opcode
@@ -174,25 +198,21 @@ class cpu(pyglet.window.Window):
                 self.sound_timer -= 1
                 if self.sound_timer == 0:
                     pass #Pyglet plays a sound
-    
 
-    def draw(self):
+
+
+    def on_draw(self):
         if self.should_draw:
             self.clear()
-            line_counter = 0
+           
             i = 0
             while i < 2048:
                 if self.display_buffer[i] == 1:
-                    self.pixel.blit((i%64)*10, 310 - ((i/64)*10))
+                    self.pixel.update((i%64)*10, 310 - ((i//64)*10))
                 i += 1
             self.flip()
-            self.should_draw == False
-
-
-
-  
+            self.should_draw = False
         
-
     def _0ZZZ(self):
         extracted_op = self.op_code & 0xf0ff
         try:
@@ -418,44 +438,10 @@ class cpu(pyglet.window.Window):
         print("Read registers V0 through Vx from memory starting at location I")
         for addr in range(0,self.vx):
             self.gpio[addr] = self.memory[self.index + addr]
-             
-            
 
 
-    
-if len(sys.argv) == 3:
-  if sys.argv[2] == "log":
-    LOGGING = True
-      
-KEY_MAP = {
-        key._1: 0x1,
-        key._2: 0x2,
-        key._3: 0x3,
-        key._4: 0xC,
 
-        key.Q: 0x4,
-        key.W: 0x5,
-        key.E: 0x6,
-        key.R: 0xD,
 
-        key.A: 0x7,
-        key.S: 0x8,
-        key.D: 0x9,
-        key.F: 0xE,
 
-        key.Z: 0xA,
-        key.X: 0x0,
-        key.C: 0xB,
-        key.V: 0xF
-        }
-chip8emu = cpu(640, 320)
+chip8emu = cpu(640,320)
 chip8emu.main()
-print("... done.")
-
-
-
-
-
-
-
-
