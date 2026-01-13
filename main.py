@@ -2,7 +2,7 @@ from pyglet.window import key
 import pyglet
 import random
 import sys
-sys.argv = ["test.py","IBMLogo.ch8"]
+
 class cpu(pyglet.window.Window):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -83,14 +83,14 @@ class cpu(pyglet.window.Window):
         }
         
         self.funcmap = {0x0000: self._0ZZZ,   
-                        0x00e0: self._0ZZ0,    
+                        0x00e0: self._0ZZ0,    # Used by IBM Logo (Works)
                         0x00ee: self._0ZZE,     
-                        0x1000: self._1ZZZ,    
+                        0x1000: self._1ZZZ,    # Used by IBM Logo (Works)
                         0x2000: self._2ZZZ,
                         0x3000: self._3ZKK,
                         0x4000: self._4ZKK,
                         0x5000: self._5XY0,
-                        0x6000: self._6ZKK,
+                        0x6000: self._6ZKK,     # Used by IBM Logo (Works)
                         0x7000: self._7ZKK,
                         0x8000: self._8XY0,
                         0x8001: self._8XY1,
@@ -102,13 +102,14 @@ class cpu(pyglet.window.Window):
                         0x8007: self._8XY7,
                         0x800e: self._8XYE,
                         0x9000: self._9XY0,
-                        0xa000: self._ANNN,
+                        0xa000: self._ANNN,     # Used by IBM Logo (Works)
                         0xb000: self._BNNN,
                         0xc000: self._CXKK,
-                        0xd000: self._DXYN2, #Remember to check!!
+                        0xd000: self._DXYN2, #Remember to check!! # Used by IBM Logo (Works)
                         0xe09e: self._EX9E,
                         0xe0a1: self._EXA1,
                         0xf007: self._FX07,
+                        0xf000: self._FZZZ,
                         0xf00a: self._FX0A,
                         0xf015: self._FX15,
                         0xf018: self._FX18,
@@ -139,9 +140,12 @@ class cpu(pyglet.window.Window):
         self.pc = 0x200
 
         i = 0 
-        while i < 80: # 16 characters 5 bytes each
+        for i in range(len(self.fonts)): # 16 characters 5 bytes each
             self.memory[i] = self.fonts[i]
-            i +=1
+            
+
+
+
    
     def on_key_press(self, symbol, modifiers):
         print(f"Key pressed {symbol}")
@@ -164,19 +168,26 @@ class cpu(pyglet.window.Window):
         print(f"Loading ROM from {rom_path}")
         binary = open(rom_path, "rb").read()
         i=0
-        while i < len(binary):
-            self.memory[i+0x200] = binary[i] #ord(binary[i])
-            i += 1
+        # while i < len(binary):
+        #     self.memory[i+0x200] = binary[i] #ord(binary[i])
+        #     i += 1
+        for i,byte in enumerate(binary):
+            self.memory[0x200 + i] = byte
         print("ROM Loaded")
     
     def cycle(self,dt):
        if not self.key_wait:
-            print("opcode list: " , self.memory[self.pc])
-            self.op_code = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
-            #self.op_code = self.memory[self.pc]
-
             
-            # Processing opcode
+            self.op_code = (self.memory[self.pc] << 8) | self.memory[self.pc + 1]
+            print("opcode: " , hex(self.memory[self.pc]))
+            #self.op_code = self.memory[self.pc]
+            b1 = self.memory[self.pc]
+            b2 = self.memory[self.pc + 1]
+           # b3 = self.memory[self.pc + 2]
+            #b4 = self.memory[self.pc + 3]
+            print(f"PC: {self.pc} | Bytes: {hex(b1)} {hex(b2)}" )
+            
+            # Calculating registers 
             self.vx = (self.op_code & 0x0f00) >> 8
             self.vy = (self.op_code & 0x00f0) >> 4
 
@@ -186,11 +197,11 @@ class cpu(pyglet.window.Window):
             # Lookup and execute
 
             extracted_op = self.op_code & 0xf000
-            print(f"extracted op: {extracted_op}")
+            print(f"extracted op: {hex(extracted_op)}")
             try:
                 self.funcmap[extracted_op] ()
             except:
-                print(f"Unknown instruction {self.op_code}")
+                print(f"Unknown instruction {hex(self.op_code)}")
 
             if self.delay_timer > 0:
                 self.delay_timer -= 1
@@ -216,10 +227,13 @@ class cpu(pyglet.window.Window):
         
     def _0ZZZ(self):
         extracted_op = self.op_code & 0xf0ff
+       
         try:
             self.funcmap[extracted_op]()
         except:
-            print(f"Unknown instruction {self.op_code}")
+            print(f"Unknown instruction {hex(self.op_code)}")
+            pass
+        print("fin")
     
     def _0ZZ0(self):
         print("Clears the screen")
@@ -239,6 +253,7 @@ class cpu(pyglet.window.Window):
         print("Call subroutine at nnn")
         self.stack.append(self.pc)
         self.pc = self.op_code & 0x0fff
+        print(" Fin")
     
     def _3ZKK(self):
         print("Skip next instruction if Vx == kk")
@@ -257,7 +272,7 @@ class cpu(pyglet.window.Window):
 
     def _6ZKK(self):
         print("Set Vx = kk")
-        self.gpio[self.vx] = self.op_code & 0x00ff
+        self.gpio[self.vx] = (self.op_code & 0x00ff)
     
     def _7ZKK(self):
         print("Set Vx = Vx + kk.")
@@ -296,13 +311,22 @@ class cpu(pyglet.window.Window):
             self.gpio[0xf] = 0
         self.gpio[self.vx] = self.gpio[self.vx] - self.gpio[self.vy]
     
+    #Harry's code
+    # def _8XY6(self):
+    #     print("Set Vx = Vx SHR 1.")
+    #     if self.gpio[self.vx] & 0x1 == 1:
+    #         self.gpio[0xf] = self.gpio[self.vx] & 0x1
+    #     else:
+    #         self.gpio[0xf] = 0 
+    #     self.gpio[self.vx] >>= 1
+    
     def _8XY6(self):
         print("Set Vx = Vx SHR 1.")
-        if self.gpio[self.vx] & 0x1 == 1:
-            self.gpio[0xf] = self.gpio[self.vx] & 0x1
+        if self.gpio[self.vx] & 0x01 == 1:
+            self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] >>= 1
+        self.gpio[self.vx] = (self.gpio[self.vx] >> 1) & 0xff
     
     def _8XY7(self):
         print("Set Vx = Vy - Vx, set VF = NOT borrow.")
@@ -312,13 +336,23 @@ class cpu(pyglet.window.Window):
             self.gpio[0xf] = 0
         self.gpio[self.vx] = self.gpio[self.vy] - self.gpio[self.vx]
     
+
+    #Harry's code
+    # def _8XYE(self):
+    #     print("Set Vx = Vx SHL 1")
+    #     if self.gpio[self.vx] & 0x1 == 1:
+    #         self.gpio[0xf] = self.gpio[self.vx] & 0x1
+    #     else:
+    #         self.gpio[0xf] = 0 
+    #     self.gpio[self.vx] <<= 1
+    
     def _8XYE(self):
         print("Set Vx = Vx SHL 1")
-        if self.gpio[self.vx] & 0x1 == 1:
-            self.gpio[0xf] = self.gpio[self.vx] & 0x1
+        if self.gpio[self.vy] & 0x80 == 0x80:
+            self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] <<= 1
+        self.gpio[self.vx] = (self.gpio[self.vx] << 1) & 0xff
     
     def _9XY0(self):
         print("Skip next instruction if Vx != Vy")
@@ -335,7 +369,7 @@ class cpu(pyglet.window.Window):
 
     def _CXKK(self):
         print("Set Vx = random byte AND kk")
-        self.gpio[self.vx] = random.randint(0,255) & (self.op_code & 0x00ff)
+        self.gpio[self.vx] = random.randint(0,0xff) & (self.op_code & 0x00ff)
 
     def _DXYN(self):
         print("Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision")
@@ -361,7 +395,7 @@ class cpu(pyglet.window.Window):
         self.should_draw = True
     
     def _DXYN2(self):
-        x = self.gpio[self.vx] & 0xff # Try without masking
+        x = self.gpio[self.vx] & 0xff 
         y = self.gpio[self.vy] & 0xff
         height = self.op_code & 0x000f
 
@@ -373,8 +407,8 @@ class cpu(pyglet.window.Window):
                 loc = x + column + ((y+row) * 64)
                 if (y+row) >= 32 or (x + column - 1 >= 64):
                     continue
-                mask = 1 << 8 - column
-                curr_pixel = (spriteByte & mask) >> (8 - column)
+                mask = 1 << 7 - column
+                curr_pixel = (spriteByte & mask) >> (7 - column)
                 
                 self.display_buffer[loc] ^= curr_pixel
                 if self.display_buffer[loc] == 0:
@@ -392,6 +426,16 @@ class cpu(pyglet.window.Window):
         if self.input_buffer[self.gpio[self.vx]] == 0:
             self.key_inputs 
             self.pc += 2
+    
+    def _FZZZ(self):
+        extracted_op = self.op_code & 0xf0ff
+       
+        try:
+            self.funcmap[extracted_op]()
+        except:
+            print(f"Unknown instruction {hex(self.op_code)}")
+            pass
+        print("fin")
     
     def _FX07(self):
         print("Set Vx = delay timer value")
@@ -421,7 +465,8 @@ class cpu(pyglet.window.Window):
     
     def _FX29(self):
         print("Set I = location of sprite for digit Vx")
-        self.index = (5*(self.gpio[self.vx])) & 0xfff
+        self.index = (5*(self.gpio[(self.op_code & 0x0F00) >> 8])) & 0xfff
+        print("FX29 Complete")
 
     def _FX33(self):
         print("Store BCD representation of Vx in memory locations I, I+1, and I+2")
@@ -438,7 +483,7 @@ class cpu(pyglet.window.Window):
     
     def _FX65(self):
         print("Read registers V0 through Vx from memory starting at location I")
-        for addr in range(0,self.vx):
+        for addr in range(0,self.vx +1 ):
             self.gpio[addr] = self.memory[self.index + addr]
 
 
