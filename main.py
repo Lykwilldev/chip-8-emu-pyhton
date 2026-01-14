@@ -84,14 +84,14 @@ class cpu(pyglet.window.Window):
         
         self.funcmap = {0x0000: self._0ZZZ,   
                         0x00e0: self._0ZZ0,    # Used by IBM Logo (Works)
-                        0x00ee: self._0ZZE,     
+                        0x00ee: self._0ZZE,     #Works!  
                         0x1000: self._1ZZZ,    # Used by IBM Logo (Works)
                         0x2000: self._2ZZZ,
-                        0x3000: self._3ZKK,
-                        0x4000: self._4ZKK,
-                        0x5000: self._5XY0,
+                        0x3000: self._3ZKK, #Works!
+                        0x4000: self._4ZKK, #Works!
+                        0x5000: self._5XY0, #Works!
                         0x6000: self._6ZKK,     # Used by IBM Logo (Works)
-                        0x7000: self._7ZKK,
+                        0x7000: self._7ZKK, #Works!
                         0x8000: self._8XY0,
                         0x8001: self._8XY1,
                         0x8002: self._8XY2,
@@ -101,23 +101,24 @@ class cpu(pyglet.window.Window):
                         0x8006: self._8XY6,
                         0x8007: self._8XY7,
                         0x800e: self._8XYE,
-                        0x9000: self._9XY0,
+                        0x9000: self._9XY0, #Works!
                         0xa000: self._ANNN,     # Used by IBM Logo (Works)
                         0xb000: self._BNNN,
                         0xc000: self._CXKK,
                         0xd000: self._DXYN2, #Remember to check!! # Used by IBM Logo (Works)
+                        0xe000: self._EZZZ,
                         0xe09e: self._EX9E,
                         0xe0a1: self._EXA1,
-                        0xf007: self._FX07,
-                        0xf000: self._FZZZ,
-                        0xf00a: self._FX0A,
-                        0xf015: self._FX15,
-                        0xf018: self._FX18,
-                        0xf01e: self._FX1E,
-                        0xf029: self._FX29,
-                        0xf033: self._FX33,
-                        0xf055: self._FX55,
-                        0xf065: self._FX65}
+                        0xf007: self._FX07, #Works!
+                        0xf000: self._FZZZ, #Works!
+                        0xf00a: self._FX0A, #Works!
+                        0xf015: self._FX15, #Works!
+                        0xf018: self._FX18, #Works!
+                        0xf01e: self._FX1E, #Works!
+                        0xf029: self._FX29, #Works!
+                        0xf033: self._FX33, #Works!
+                        0xf055: self._FX55, #Works!
+                        0xf065: self._FX65} #Works!
 
         
         # Input/Output
@@ -279,9 +280,21 @@ class cpu(pyglet.window.Window):
         self.gpio[self.vx] = self.gpio[self.vx] + self.op_code & 0x00ff
     
     def _8XY0(self):
-        print("Set VX = Vy")
-        self.gpio[self.vx] = self.gpio[self.vy]
+        extracted_op = self.op_code & 0xf00f
+       
+        if extracted_op == 0x8000:
+            print("Set VX = Vy")
+            self.gpio[self.vx] = self.gpio[self.vy]
+            pass
+        else:
+            try:
+                self.funcmap[extracted_op]()
+            except:
+                print(f"Unknown instruction {hex(self.op_code)}")
+                pass
+            print("fin")
 
+   
     def _8XY1(self):
         print("Set Vx = Vx OR Vy")
         self.gpio[self.vx] = self.gpio[self.vx] | self.gpio[self.vy]
@@ -305,11 +318,13 @@ class cpu(pyglet.window.Window):
     
     def _8XY5(self):
         print("Set Vx = Vx - Vy, set VF = NOT borrow")
+        print("in 8xy5")
         if self.gpio[self.vx] > self.gpio[self.vy]:
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0
         self.gpio[self.vx] = self.gpio[self.vx] - self.gpio[self.vy]
+        print("leaving 8xy5")
     
     #Harry's code
     # def _8XY6(self):
@@ -338,21 +353,21 @@ class cpu(pyglet.window.Window):
     
 
     #Harry's code
-    # def _8XYE(self):
-    #     print("Set Vx = Vx SHL 1")
-    #     if self.gpio[self.vx] & 0x1 == 1:
-    #         self.gpio[0xf] = self.gpio[self.vx] & 0x1
-    #     else:
-    #         self.gpio[0xf] = 0 
-    #     self.gpio[self.vx] <<= 1
-    
     def _8XYE(self):
         print("Set Vx = Vx SHL 1")
-        if self.gpio[self.vy] & 0x80 == 0x80:
-            self.gpio[0xf] = 1
+        if self.gpio[self.vx] & 0x1 == 1:
+            self.gpio[0xf] = self.gpio[self.vx] & 0x1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] = (self.gpio[self.vx] << 1) & 0xff
+        self.gpio[self.vx] <<= 1
+    
+    # def _8XYE(self):
+    #     print("Set Vx = Vx SHL 1")
+    #     if self.gpio[self.vy] & 0x80 == 0x80:
+    #         self.gpio[0xf] = 1
+    #     else:
+    #         self.gpio[0xf] = 0 
+    #     self.gpio[self.vx] = (self.gpio[self.vx] << 1) & 0xff
     
     def _9XY0(self):
         print("Skip next instruction if Vx != Vy")
@@ -414,7 +429,15 @@ class cpu(pyglet.window.Window):
                 if self.display_buffer[loc] == 0:
                     self.gpio[0xf] = 1
             self.should_draw = True
-    
+    def _EZZZ(self):
+        extracted_op = self.op_code & 0xf000
+        print("In new function rn")
+        try:
+            self.funcmap[extracted_op]()
+        except:
+            print(f"Unknown instruction {hex(self.op_code)}")
+            pass
+        print("fin")
 
     def _EX9E(self):
         print("Skip next instruction if key with the value of Vx is pressed")
@@ -429,6 +452,7 @@ class cpu(pyglet.window.Window):
     
     def _FZZZ(self):
         extracted_op = self.op_code & 0xf0ff
+        
        
         try:
             self.funcmap[extracted_op]()
