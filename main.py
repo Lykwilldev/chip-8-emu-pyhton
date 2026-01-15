@@ -105,7 +105,7 @@ class cpu(pyglet.window.Window):
                         0xa000: self._ANNN,     # Used by IBM Logo (Works)
                         0xb000: self._BNNN,
                         0xc000: self._CXKK,
-                        0xd000: self._DXYN2, #Remember to check!! # Used by IBM Logo (Works)
+                        0xd000: self._DXYN, # Used by IBM Logo (Works)
                         0xe000: self._EZZZ,
                         0xe09e: self._EX9E,
                         0xe0a1: self._EXA1,
@@ -285,8 +285,10 @@ class cpu(pyglet.window.Window):
         if extracted_op == 0x8000:
             print("Set VX = Vy")
             self.gpio[self.vx] = self.gpio[self.vy]
+           
             pass
         else:
+            print(f"about to use op {hex(extracted_op)}")
             try:
                 self.funcmap[extracted_op]()
             except:
@@ -313,27 +315,19 @@ class cpu(pyglet.window.Window):
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0
-        self.gpio[self.vx] = self.gpio[self.vx] + self.gpio[self.vy]
-        self.gpio[self.vx] &= 0xff
+        self.gpio[self.vx] = (self.gpio[self.vx] + self.gpio[self.vy]) & 0xff
+       
     
     def _8XY5(self):
         print("Set Vx = Vx - Vy, set VF = NOT borrow")
-        print("in 8xy5")
         if self.gpio[self.vx] > self.gpio[self.vy]:
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0
-        self.gpio[self.vx] = self.gpio[self.vx] - self.gpio[self.vy]
-        print("leaving 8xy5")
+        self.gpio[self.vx] = (self.gpio[self.vx] - self.gpio[self.vy]) & 0xff
+        
     
-    #Harry's code
-    # def _8XY6(self):
-    #     print("Set Vx = Vx SHR 1.")
-    #     if self.gpio[self.vx] & 0x1 == 1:
-    #         self.gpio[0xf] = self.gpio[self.vx] & 0x1
-    #     else:
-    #         self.gpio[0xf] = 0 
-    #     self.gpio[self.vx] >>= 1
+    
     
     def _8XY6(self):
         print("Set Vx = Vx SHR 1.")
@@ -341,7 +335,7 @@ class cpu(pyglet.window.Window):
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] = (self.gpio[self.vx] >> 1) & 0xff
+        self.gpio[self.vx] = (self.gpio[self.vx] >> 1) 
     
     def _8XY7(self):
         print("Set Vx = Vy - Vx, set VF = NOT borrow.")
@@ -349,25 +343,18 @@ class cpu(pyglet.window.Window):
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0
-        self.gpio[self.vx] = self.gpio[self.vy] - self.gpio[self.vx]
+        self.gpio[self.vx] = (self.gpio[self.vy] - self.gpio[self.vx]) & 0xff
     
 
     #Harry's code
     def _8XYE(self):
         print("Set Vx = Vx SHL 1")
-        if self.gpio[self.vx] & 0x1 == 1:
-            self.gpio[0xf] = self.gpio[self.vx] & 0x1
+        if self.gpio[self.vx] & 0x1 == 1: #VX & 0X80 == 0X80
+            self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] <<= 1
-    
-    # def _8XYE(self):
-    #     print("Set Vx = Vx SHL 1")
-    #     if self.gpio[self.vy] & 0x80 == 0x80:
-    #         self.gpio[0xf] = 1
-    #     else:
-    #         self.gpio[0xf] = 0 
-    #     self.gpio[self.vx] = (self.gpio[self.vx] << 1) & 0xff
+        self.gpio[self.vx] = (self.gpio[self.vx] << 1) 
+
     
     def _9XY0(self):
         print("Skip next instruction if Vx != Vy")
@@ -386,30 +373,9 @@ class cpu(pyglet.window.Window):
         print("Set Vx = random byte AND kk")
         self.gpio[self.vx] = random.randint(0,0xff) & (self.op_code & 0x00ff)
 
-    def _DXYN(self):
-        print("Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision")
-        self.gpio[0xf] = 0
-        x = self.gpio[self.vx] & 0xff
-        y = self.gpio[self.vy] & 0xff
-        height = self.op_code & 0x000f
-        row = 0
-        while row < height:
-            curr_row = self.memory[row + self.index]
-            pixel_offset = 0
-            while pixel_offset < 8:
-                loc = x + pixel_offset + ((y+row) * 64)
-                pixel_offset += 1
-                if (y+row) >= 32 or (x + pixel_offset - 1 >= 64):
-                    continue
-                mask = 1 << 8 - pixel_offset
-                curr_pixel = (curr_row & mask) >> (8 - pixel_offset)
-                self.display_buffer[loc] ^= curr_pixel
-                if self.display_buffer[loc] == 0:
-                    self.gpio[0xf] = 1
-                row += 1
-        self.should_draw = True
     
-    def _DXYN2(self):
+    
+    def _DXYN(self):
         x = self.gpio[self.vx] & 0xff 
         y = self.gpio[self.vy] & 0xff
         height = self.op_code & 0x000f
@@ -431,7 +397,7 @@ class cpu(pyglet.window.Window):
             self.should_draw = True
     def _EZZZ(self):
         extracted_op = self.op_code & 0xf000
-        print("In new function rn")
+        
         try:
             self.funcmap[extracted_op]()
         except:
