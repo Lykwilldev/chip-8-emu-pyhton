@@ -288,11 +288,11 @@ class cpu(pyglet.window.Window):
            
             pass
         else:
-            print(f"about to use op {hex(extracted_op)}")
+            print(f"extracted op from 8xy0: {hex(extracted_op)}")
             try:
                 self.funcmap[extracted_op]()
             except:
-                print(f"Unknown instruction {hex(self.op_code)}")
+                print(f"Unknown instruction {hex(self.op_code)} ")
                 pass
             print("fin")
 
@@ -349,11 +349,11 @@ class cpu(pyglet.window.Window):
     #Harry's code
     def _8XYE(self):
         print("Set Vx = Vx SHL 1")
-        if self.gpio[self.vx] & 0x1 == 1: #VX & 0X80 == 0X80
+        if self.gpio[self.vx] & 0x1 == 1: 
             self.gpio[0xf] = 1
         else:
             self.gpio[0xf] = 0 
-        self.gpio[self.vx] = (self.gpio[self.vx] << 1) 
+        self.gpio[self.vx] = (self.gpio[self.vx] << 1) & 0xff
 
     
     def _9XY0(self):

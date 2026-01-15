@@ -20,6 +20,8 @@ Known limitations as of now (14/1/2026):
     - 8XY2
     - 8XY3
     - 8XY4
+    - 8XY5
+    - 8XY6
     - 8XY7
     - 8XYE
     - 9XY0
